@@ -20,10 +20,18 @@ function MapController({ userLocation }: { userLocation: { lat: number; long: nu
   return null;
 }
 
-export default function PubMap({ userLocation, pubs }: { userLocation: { lat: number; long: number }, pubs: any[] }) {
+export default function PubMap({ 
+  userLocation, pubs, crawlType, pubCount 
+}: { 
+  userLocation: { lat: number; long: number }, 
+  pubs: any[], 
+  crawlType: 'sovereign' | 'conqueror', 
+  pubCount: number 
+}) {
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const [selectedPub, setSelectedPub] = useState<any | null>(null);
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
+  const [routedPubs, setRoutedPubs] = useState<any[]>([]);
 
   useEffect(() => {
     setRouteGeoJSON(null);
@@ -31,7 +39,9 @@ export default function PubMap({ userLocation, pubs }: { userLocation: { lat: nu
     if (pubs.length === 0 || !mapToken) return;
 
     const fetchRoute = async () => {
-      const sortedPubs = generateCrawlRoute(userLocation, pubs);
+      const sortedPubs = generateCrawlRoute(userLocation, pubs, crawlType, pubCount);
+      setRoutedPubs(sortedPubs);
+      
       const coords = [`${userLocation.long},${userLocation.lat}`, ...sortedPubs.map(p => `${p.long},${p.lat}`)].join(';');
 
       try {
@@ -49,7 +59,7 @@ export default function PubMap({ userLocation, pubs }: { userLocation: { lat: nu
     };
 
     fetchRoute();
-  }, [pubs, userLocation, mapToken]);
+  }, [pubs, userLocation, mapToken, crawlType, pubCount]);
 
   return (
     <div className="w-full h-full relative">
@@ -79,7 +89,7 @@ export default function PubMap({ userLocation, pubs }: { userLocation: { lat: nu
               type="line"
               layout={{ 'line-join': 'round', 'line-cap': 'round' }}
               paint={{ 
-                'line-color': '#d97706',
+                'line-color': crawlType === 'conqueror' ? '#991b1b' : '#d97706',
                 'line-width': 5,
                 'line-opacity': 0.7,
                 'line-dasharray': [1, 0]
@@ -92,14 +102,19 @@ export default function PubMap({ userLocation, pubs }: { userLocation: { lat: nu
           <div className="bg-[#b91c1c] w-5 h-5 rounded-full border-2 border-[#fef3c7] shadow-xl animate-bounce" />
         </Marker>
 
-        {pubs.map((pub, i) => (
+        {routedPubs.map((pub, i) => (
           <Marker 
             key={i} 
             longitude={pub.long} 
             latitude={pub.lat} 
             onClick={e => { e.originalEvent.stopPropagation(); setSelectedPub(pub); }}
           >
-            <div className="text-3xl cursor-pointer hover:scale-125 transition-transform filter drop-shadow-lg opacity-90 hover:opacity-100">🍺</div>
+            <div className="text-3xl cursor-pointer hover:scale-125 transition-transform filter drop-shadow-lg opacity-90 hover:opacity-100">
+              <span className="absolute -top-3 -right-3 bg-[#5d4037] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border border-[#f4e4bc] z-10">
+                {i + 1}
+              </span>
+              🍺
+            </div>
           </Marker>
         ))}
 

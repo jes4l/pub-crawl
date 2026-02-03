@@ -6,6 +6,8 @@ interface Pub {
   name: string;
   address?: string;
   category?: string;
+  crimeCount?: number;
+  crimeBreakdown?: Record<string, number>;
 }
 
 export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => void }) {
@@ -34,7 +36,7 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
   }, [pub.name, pub.lat, pub.long]);
 
   return (
-    <div className="relative bg-[#f4e4bc] p-1 max-w-[280px] font-serif border-2 border-[#5d4037] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_0_30px_rgba(93,64,55,0.2)] rounded-sm overflow-hidden">
+    <div className="relative bg-[#f4e4bc] p-1 w-[260px] font-serif border-2 border-[#5d4037] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_0_30px_rgba(93,64,55,0.2)] rounded-sm overflow-hidden flex flex-col">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] opacity-30 pointer-events-none mix-blend-multiply"></div>
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#5d4037]/50 to-transparent"></div>
       
@@ -45,7 +47,15 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
         &times;
       </button>
 
-      <div className="relative h-36 w-full overflow-hidden mb-3 bg-[#e0ce9e] border border-[#5d4037] shadow-inner rounded-sm group">
+      {pub.crimeCount !== undefined && (
+        <div className={`absolute top-2 left-2 z-20 px-1.5 py-0.5 rounded-sm border shadow-sm text-[8.5px] font-bold tracking-wider 
+          ${pub.crimeCount > 10 ? 'bg-[#7f1d1d] text-[#fca5a5] border-[#450a0a]' : 'bg-[#14532d] text-[#86efac] border-[#052e16]'}`}
+        >
+          CRIME COUNT: {pub.crimeCount}
+        </div>
+      )}
+
+      <div className="relative h-32 w-full overflow-hidden mb-2 bg-[#e0ce9e] border border-[#5d4037] shadow-inner rounded-sm group shrink-0">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#d7ccc8]">
             <span className="text-[#5d4037] text-xs tracking-[0.2em] uppercase font-bold animate-pulse">Scouting...</span>
@@ -67,15 +77,33 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
         )}
       </div>
       
-      <div className="text-center relative z-10 px-2 pb-2">
-        <h3 className="font-bold text-[#3e2723] text-xl leading-tight mb-1 uppercase tracking-wide border-b border-[#5d4037]/30 pb-1 inline-block">{pub.name}</h3>
-        <div className="flex items-center justify-center gap-2 my-1">
+      <div className="text-center relative z-10 px-2 pb-1">
+        <h3 className="font-bold text-[#3e2723] text-lg leading-tight mb-0.5 uppercase tracking-wide border-b border-[#5d4037]/30 pb-0.5 inline-block">{pub.name}</h3>
+        <div className="flex items-center justify-center gap-2 my-0.5">
             <span className="h-[1px] w-4 bg-[#5d4037]/50"></span>
-            <p className="text-xs text-[#5d4037] italic font-bold">{pub.category}</p>
+            <p className="text-[10px] text-[#5d4037] italic font-bold">{pub.category}</p>
             <span className="h-[1px] w-4 bg-[#5d4037]/50"></span>
         </div>
-        {pub.address && <p className="text-[11px] text-[#795548] mt-1 font-semibold leading-snug">{pub.address}</p>}
+        {pub.address && <p className="text-[10px] text-[#795548] mt-0.5 font-semibold leading-snug">{pub.address}</p>}
       </div>
+
+      {pub.crimeBreakdown && Object.keys(pub.crimeBreakdown).length > 0 && (
+        <div className="relative z-10 mx-2 mb-2 bg-[#e0ce9e]/70 p-1.5 rounded-sm border border-[#5d4037]/30 shadow-inner">
+          <span className="text-[9px] font-bold text-[#5d4037] uppercase tracking-widest block mb-1 border-b border-[#5d4037]/20 pb-0.5">
+            Local Hazard Report
+          </span>
+          <ul className="text-[10px] text-[#3e2723] space-y-1 max-h-20 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#5d4037 transparent' }}>
+            {Object.entries(pub.crimeBreakdown)
+              .sort(([, a], [, b]) => b - a)
+              .map(([type, count]) => (
+                <li key={type} className="flex justify-between items-center bg-[#f4e4bc]/50 px-1 py-0.5 rounded-sm">
+                  <span className="truncate flex-1 pr-2 font-medium">{type}</span>
+                  <span className="font-bold text-[#7f1d1d] bg-[#fca5a5]/20 px-1 rounded-sm">{count}</span>
+                </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

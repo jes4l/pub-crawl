@@ -8,11 +8,16 @@ interface ControlsProps {
   isLoading: boolean;
   radius: number;
   setRadius: (r: number) => void;
+  pubCount: number;
+  setPubCount: (c: number) => void;
+  crawlType: 'sovereign' | 'conqueror';
+  setCrawlType: (t: 'sovereign' | 'conqueror') => void;
   errorMsg: string | null;
 }
 
 export default function Controls({ 
-  onSearch, onLocationSelect, onGPS, isLoading, radius, setRadius, errorMsg 
+  onSearch, onLocationSelect, onGPS, isLoading, radius, setRadius, 
+  pubCount, setPubCount, crawlType, setCrawlType, errorMsg 
 }: ControlsProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [query, setQuery] = useState("");
@@ -134,7 +139,33 @@ export default function Controls({
               )}
             </div>
 
-            <div className="flex items-center justify-between mt-2 font-serif text-[#5d4037]">
+            <div className="grid grid-cols-2 gap-4 mb-4 font-serif text-[#5d4037]">
+              <div className="bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm flex flex-col">
+                <span className="text-sm font-bold mb-1">Crawl Type</span>
+                <select 
+                  value={crawlType} 
+                  onChange={(e) => setCrawlType(e.target.value as 'sovereign' | 'conqueror')}
+                  className="bg-transparent text-sm font-bold border-none focus:ring-0"
+                >
+                  <option value="sovereign">Sovereign's Passage (Low Crime)</option>
+                  <option value="conqueror">Conqueror's Crusade (Severe Crime)</option>
+                </select>
+              </div>
+
+              <div className="bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm flex flex-col justify-center">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-bold">Pubs: {pubCount}</span>
+                </div>
+                <input 
+                  type="range" min="4" max="12" step="1" 
+                  value={pubCount} 
+                  onChange={(e) => setPubCount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-[#8d6e63] rounded-lg appearance-none cursor-pointer accent-[#3e2723]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between font-serif text-[#5d4037]">
               <div className="flex items-center gap-4 w-2/3 bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm">
                 <span className="text-sm font-bold whitespace-nowrap">Range: {radius} m</span>
                 <input 

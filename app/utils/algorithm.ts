@@ -1,8 +1,14 @@
-interface Point {
+export interface Point {
   lat: number;
   long: number;
+  crimeCount?: number;
   id?: string;
 }
+
+const WEIGHTS = {
+  distance: 15.0, 
+  crime: 0.1      
+};
 
 function getDistance(p1: Point, p2: Point) {
   const R = 6371;
@@ -15,33 +21,54 @@ function getDistance(p1: Point, p2: Point) {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * c; 
 }
 
-export function generateCrawlRoute(start: Point, pubs: Point[]): Point[] {
+function calculateCost(current: Point, next: Point, type: 'sovereign' | 'conqueror') {
+  const dist = getDistance(current, next);
+  const crime = next.crimeCount || 0;
+  
+  const distanceCost = dist * WEIGHTS.distance;
+  
+  const crimeModifier = type === 'conqueror' ? -1 : 1;
+  const crimeCost = crime * WEIGHTS.crime * crimeModifier;
+
+  return distanceCost + crimeCost;
+}
+
+export function generateCrawlRoute(
+  start: Point, 
+  pubs: Point[], 
+  type: 'sovereign' | 'conqueror', 
+  limit: number
+): Point[] {
   if (pubs.length === 0) return [];
 
   const unvisited = [...pubs];
   const path: Point[] = [];
   let current = start;
 
-  while (unvisited.length > 0) {
-    let nearestIndex = -1;
-    let minDist = Infinity;
+  const targetCount = Math.min(limit, pubs.length);
+
+  while (path.length < targetCount && unvisited.length > 0) {
+    let bestIndex = -1;
+    let minCost = Infinity;
 
     for (let i = 0; i < unvisited.length; i++) {
-      const dist = getDistance(current, unvisited[i]);
-      if (dist < minDist) {
-        minDist = dist;
-        nearestIndex = i;
+      const cost = calculateCost(current, unvisited[i], type);
+      if (cost < minCost) {
+        minCost = cost;
+        bestIndex = i;
       }
     }
 
-    if (nearestIndex !== -1) {
-      const nextPub = unvisited[nearestIndex];
+    if (bestIndex !== -1) {
+      const nextPub = unvisited[bestIndex];
       path.push(nextPub);
       current = nextPub;
-      unvisited.splice(nearestIndex, 1);
+      unvisited.splice(bestIndex, 1);
+    } else {
+      break;
     }
   }
 

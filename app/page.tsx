@@ -8,6 +8,8 @@ export default function Home() {
   const [pubs, setPubs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [radius, setRadius] = useState(500);
+  const [pubCount, setPubCount] = useState(6);
+  const [crawlType, setCrawlType] = useState<'sovereign' | 'conqueror'>('sovereign');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const performSearch = async (latOverride?: number, longOverride?: number) => {
@@ -51,7 +53,12 @@ export default function Home() {
 
   return (
     <main className="w-screen h-screen relative overflow-hidden bg-[#2c241b]">
-      <PubMap userLocation={userLocation} pubs={pubs} />
+      <PubMap 
+        userLocation={userLocation} 
+        pubs={pubs} 
+        crawlType={crawlType} 
+        pubCount={pubCount} 
+      />
       <Controls 
         onSearch={() => performSearch()}
         onLocationSelect={handleLocationSelect}
@@ -59,6 +66,10 @@ export default function Home() {
         isLoading={isLoading}
         radius={radius}
         setRadius={setRadius}
+        pubCount={pubCount}
+        setPubCount={setPubCount}
+        crawlType={crawlType}
+        setCrawlType={setCrawlType}
         errorMsg={errorMsg}
       />
     </main>
