@@ -4,12 +4,13 @@ import PubMap from './components/map';
 import Controls from './components/controls';
 
 export default function Home() {
-  const [userLocation, setUserLocation] = useState({ lat: 51.498, long: -0.141 }); 
+  const [userLocation, setUserLocation] = useState({ lat: 52.9548, long: -1.1581 });
   const [pubs, setPubs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [radius, setRadius] = useState(500);
+  const [radius, setRadius] = useState(1000);
   const [pubCount, setPubCount] = useState(6);
   const [crawlType, setCrawlType] = useState<'sovereign' | 'conqueror'>('sovereign');
+  const [tier, setTier] = useState('Passable');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const performSearch = async (latOverride?: number, longOverride?: number) => {
@@ -26,12 +27,17 @@ export default function Home() {
       const data = await res.json();
 
       if (!data.pubs?.length) {
-        setErrorMsg("No pubs found here. Try a wider radius.");
+        setErrorMsg('No venues found. Try increasing radius.');
       } else {
-        setPubs(data.pubs);
+        const cleanPubs = data.pubs.filter((p: any) => {
+          const name = p.name.toLowerCase();
+          const bannedNames = ['rock city', 'playhouse', 'bella italia', 'bistro live'];
+          return !bannedNames.some((ban) => name.includes(ban));
+        });
+        setPubs(cleanPubs);
       }
-    } catch {
-      setErrorMsg("Failed to connect to search services.");
+    } catch (e: any) {
+      setErrorMsg('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,20 +52,21 @@ export default function Home() {
     if (!navigator.geolocation) return;
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => handleLocationSelect(pos.coords.latitude, pos.coords.longitude), 
+      (pos) => handleLocationSelect(pos.coords.latitude, pos.coords.longitude),
       () => setIsLoading(false)
     );
   };
 
   return (
     <main className="w-screen h-screen relative overflow-hidden bg-[#2c241b]">
-      <PubMap 
-        userLocation={userLocation} 
-        pubs={pubs} 
-        crawlType={crawlType} 
-        pubCount={pubCount} 
+      <PubMap
+        userLocation={userLocation}
+        pubs={pubs}
+        crawlType={crawlType}
+        pubCount={pubCount}
+        tier={tier}
       />
-      <Controls 
+      <Controls
         onSearch={() => performSearch()}
         onLocationSelect={handleLocationSelect}
         onGPS={handleGPS}
@@ -70,6 +77,8 @@ export default function Home() {
         setPubCount={setPubCount}
         crawlType={crawlType}
         setCrawlType={setCrawlType}
+        tier={tier}
+        setTier={setTier}
         errorMsg={errorMsg}
       />
     </main>

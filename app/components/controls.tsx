@@ -12,35 +12,47 @@ interface ControlsProps {
   setPubCount: (c: number) => void;
   crawlType: 'sovereign' | 'conqueror';
   setCrawlType: (t: 'sovereign' | 'conqueror') => void;
+  tier: string;
+  setTier: (t: string) => void;
   errorMsg: string | null;
 }
 
-export default function Controls({ 
-  onSearch, onLocationSelect, onGPS, isLoading, radius, setRadius, 
-  pubCount, setPubCount, crawlType, setCrawlType, errorMsg 
+export default function Controls({
+  onSearch,
+  onLocationSelect,
+  onGPS,
+  isLoading,
+  radius,
+  setRadius,
+  pubCount,
+  setPubCount,
+  crawlType,
+  setCrawlType,
+  tier,
+  setTier,
+  errorMsg
 }: ControlsProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.length < 3) return setSuggestions([]);
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(val)}&access_token=${mapToken}&country=gb&types=address,place,poi&limit=5&session_token=${crypto.randomUUID()}`;
+        const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
+          val
+        )}&access_token=${mapToken}&country=gb&types=address,place,poi&limit=5&session_token=${crypto.randomUUID()}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setSuggestions(data.suggestions || []);
-          setShowSuggestions(true);
         }
       } catch {}
     }, 300);
@@ -48,14 +60,15 @@ export default function Controls({
 
   const handleSelect = async (suggestion: any) => {
     setQuery(suggestion.name);
-    setShowSuggestions(false);
     setSuggestions([]);
-    
     try {
-      const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${mapToken}&session_token=${crypto.randomUUID()}`);
+      const res = await fetch(
+        `https://api.mapbox.com/search/searchbox/v1/retrieve/${
+          suggestion.mapbox_id
+        }?access_token=${mapToken}&session_token=${crypto.randomUUID()}`
+      );
       const data = await res.json();
       const feature = data.features?.[0];
-      
       if (feature) {
         const [long, lat] = feature.geometry.coordinates;
         onLocationSelect(lat, long, suggestion.name);
@@ -63,131 +76,180 @@ export default function Controls({
     } catch {}
   };
 
-  const handleGo = async () => {
-    if (!query.trim()) return onSearch();
-    try {
-      const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(query)}&access_token=${mapToken}&country=gb&types=place,address&limit=1`);
-      const data = await res.json();
-      if (data.suggestions?.length > 0) await handleSelect(data.suggestions[0]);
-      else onSearch();
-    } catch {
-      onSearch();
-    }
-  };
-
   return (
     <>
-      {!isOpen && (
-        <button 
-          onClick={() => setIsOpen(true)}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 bg-[#f4e4bc] text-[#4a3b2a] px-8 py-3 rounded-lg font-serif font-bold shadow-2xl border-2 border-[#6d4c41] hover:scale-105 transition-all tracking-widest"
-        >
-          🔍 OPEN MAP
-        </button>
-      )}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="md:hidden absolute top-4 right-4 z-50 bg-[#5d4037] text-[#f4e4bc] p-2 rounded-full shadow-lg border-2 border-[#f4e4bc]"
+      >
+        {isOpen ? '✖' : '⚙'}
+      </button>
 
-      <div className={`absolute bottom-0 left-0 w-full z-40 transition-transform duration-500 ease-in-out ${isOpen ? 'translate-y-0' : 'translate-y-[120%]'}`}>
-        <div className="bg-[#f4e4bc] border-t-4 border-[#5d4037] pb-8 pt-6 px-4 shadow-[0_-10px_50px_rgba(0,0,0,0.9)] relative">
-          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')]"></div>
+      <div
+        className={`
+        absolute top-0 left-0 h-full bg-[#f4e4bc] border-r-4 border-[#5d4037] shadow-2xl z-40 
+        transition-transform duration-300 ease-in-out w-full md:w-[320px] overflow-y-auto
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}
+      >
+        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')]"></div>
 
-          <div className="max-w-xl mx-auto relative z-10">
-            <button 
-              onClick={() => setIsOpen(false)} 
-              className="absolute -top-10 right-0 bg-[#5d4037] text-[#f4e4bc] rounded-t-lg px-4 py-1 text-xs font-serif font-bold shadow-lg border-x-2 border-t-2 border-[#3e2723]"
-            >
-              ⬇ HIDE
-            </button>
+        <div className="relative z-10 p-4 flex flex-col h-full gap-4">
+          <div className="border-b-2 border-[#5d4037]/20 pb-2 text-center">
+            <h1 className="text-[#5d4037] font-serif font-bold text-xl tracking-widest uppercase">
+              Pub Scout
+            </h1>
+            <p className="text-[10px] text-[#8d6e63] font-bold uppercase tracking-wider">
+              Historical Route Planner
+            </p>
+          </div>
 
-            <h2 className="text-[#5d4037] font-serif font-bold uppercase text-lg tracking-[0.2em] mb-4 text-center border-b-2 border-[#5d4037]/20 pb-2">
-              Plan Your Journey
-            </h2>
-
-            <div className="relative z-50 mb-4">
-              <div className="flex gap-2 p-1 bg-[#e0ce9e] rounded-lg border border-[#8d6e63] shadow-inner">
-                <input 
-                  type="text" 
-                  placeholder="Enter Town, City or Inn..."
-                  className="flex-1 bg-transparent border-none px-4 py-3 text-[#3e2723] placeholder-[#8d6e63] focus:outline-none focus:ring-0 font-serif text-lg"
-                  value={query}
-                  onChange={handleInputChange}
-                  onFocus={() => query.length > 2 && setShowSuggestions(true)}
-                />
-                <button 
-                  onClick={handleGo}
-                  disabled={isLoading}
-                  className="bg-[#5d4037] text-[#f4e4bc] font-serif font-bold px-6 rounded-md hover:bg-[#4e342e] disabled:opacity-50 transition-colors shadow-md border border-[#3e2723]"
-                >
-                  {isLoading ? 'SCOUTING...' : 'GO'}
-                </button>
-              </div>
-
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute bottom-full left-0 w-full bg-[#fdf5e6] border-2 border-[#5d4037] rounded-lg mb-2 shadow-2xl overflow-hidden max-h-[300px] overflow-y-auto z-[100]">
-                  {suggestions.map((s, i) => (
-                    <div 
-                      key={i} 
-                      onClick={() => handleSelect(s)}
-                      className="p-3 border-b border-[#d7ccc8] hover:bg-[#efebe9] cursor-pointer flex flex-col group transition-colors"
-                    >
-                      <span className="text-[#3e2723] font-serif font-bold text-lg group-hover:text-[#5d4037]">{s.name}</span>
-                      <span className="text-[#795548] text-xs font-serif italic truncate">
-                        {s.full_address || s.address || s.place_formatted}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-4 font-serif text-[#5d4037]">
-              <div className="bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm flex flex-col">
-                <span className="text-sm font-bold mb-1">Crawl Type</span>
-                <select 
-                  value={crawlType} 
-                  onChange={(e) => setCrawlType(e.target.value as 'sovereign' | 'conqueror')}
-                  className="bg-transparent text-sm font-bold border-none focus:ring-0"
-                >
-                  <option value="sovereign">Sovereign's Passage (Low Crime)</option>
-                  <option value="conqueror">Conqueror's Crusade (Severe Crime)</option>
-                </select>
-              </div>
-
-              <div className="bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm flex flex-col justify-center">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-bold">Pubs: {pubCount}</span>
-                </div>
-                <input 
-                  type="range" min="4" max="12" step="1" 
-                  value={pubCount} 
-                  onChange={(e) => setPubCount(parseInt(e.target.value))}
-                  className="w-full h-2 bg-[#8d6e63] rounded-lg appearance-none cursor-pointer accent-[#3e2723]"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between font-serif text-[#5d4037]">
-              <div className="flex items-center gap-4 w-2/3 bg-[#e0ce9e] p-2 rounded-lg border border-[#8d6e63]/30 shadow-sm">
-                <span className="text-sm font-bold whitespace-nowrap">Range: {radius} m</span>
-                <input 
-                  type="range" min="100" max="2000" step="100" 
-                  value={radius} 
-                  onChange={(e) => setRadius(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-[#8d6e63] rounded-lg appearance-none cursor-pointer accent-[#3e2723]"
-                />
-              </div>
-              <button 
-                onClick={onGPS} 
-                className="flex items-center gap-1 text-sm font-bold text-[#3e2723] hover:text-[#1a120b] border-b border-dashed border-[#3e2723]"
-              >
-                <span>📍</span> LOCATE ME
+          <div className="relative">
+            <div className="flex bg-[#e0ce9e] rounded border border-[#8d6e63] shadow-inner">
+              <input
+                type="text"
+                placeholder="Search location..."
+                className="flex-1 bg-transparent border-none px-3 py-2 text-[#3e2723] placeholder-[#8d6e63] focus:outline-none text-sm font-bold"
+                value={query}
+                onChange={handleInputChange}
+              />
+              <button onClick={() => onSearch()} className="px-3 text-lg">
+                🔍
               </button>
             </div>
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 w-full bg-[#fdf5e6] border-2 border-[#5d4037] mt-1 shadow-xl z-50 max-h-40 overflow-y-auto rounded-sm">
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    onClick={() => handleSelect(s)}
+                    className="p-2 border-b border-[#d7ccc8] hover:bg-[#efebe9] cursor-pointer text-xs font-bold text-[#3e2723]"
+                  >
+                    {s.name}{' '}
+                    <span className="opacity-50 block text-[10px]">{s.place_formatted}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
+          <button
+            onClick={onGPS}
+            className="w-full py-2 bg-[#5d4037] text-[#f4e4bc] text-xs font-bold rounded shadow hover:bg-[#4e342e] transition-colors border border-[#3e2723]"
+          >
+            📍 USE MY GPS LOCATION
+          </button>
+
+          <hr className="border-[#5d4037]/20" />
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase text-[#5d4037] block mb-1">
+                Quality Tier
+              </label>
+              <div className="flex flex-col gap-1">
+                {['Bottom of the Barrel', 'Passable', 'Aristocrat'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTier(t)}
+                    className={`w-full text-left px-3 py-2 text-xs font-bold border transition-all rounded-sm flex justify-between items-center
+                      ${
+                        tier === t
+                          ? 'bg-[#5d4037] text-[#f4e4bc] border-[#3e2723]'
+                          : 'bg-[#e0ce9e] text-[#5d4037] border-[#8d6e63]/30 hover:bg-[#d7ccc8]'
+                      }`}
+                  >
+                    <span>
+                      {t === 'Bottom of the Barrel'
+                        ? '🛢️ Bottom Barrel'
+                        : t === 'Passable'
+                        ? '🍺 Passable'
+                        : '🎩 Aristocrat'}
+                    </span>
+                    {tier === t && <span>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-[#5d4037] block mb-1">
+                Route Strategy
+              </label>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => setCrawlType('sovereign')}
+                  className={`p-2 text-[10px] font-bold border rounded-sm flex flex-col items-center gap-1 transition-all
+                    ${
+                      crawlType === 'sovereign'
+                        ? 'bg-[#14532d] text-[#dcfce7] border-[#052e16]'
+                        : 'bg-[#e0ce9e] text-[#5d4037] border-[#8d6e63]/30'
+                    }`}
+                >
+                  <span>🛡️ Sovereign</span>
+                  <span className="opacity-70 text-[8px] uppercase">Safe Route</span>
+                </button>
+                <button
+                  onClick={() => setCrawlType('conqueror')}
+                  className={`p-2 text-[10px] font-bold border rounded-sm flex flex-col items-center gap-1 transition-all
+                    ${
+                      crawlType === 'conqueror'
+                        ? 'bg-[#7f1d1d] text-[#fee2e2] border-[#450a0a]'
+                        : 'bg-[#e0ce9e] text-[#5d4037] border-[#8d6e63]/30'
+                    }`}
+                >
+                  <span>⚔️ Conqueror</span>
+                  <span className="opacity-70 text-[8px] uppercase">High Risk</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#e0ce9e]/50 p-3 rounded border border-[#8d6e63]/30 space-y-3">
+              <div>
+                <div className="flex justify-between text-[10px] font-bold text-[#5d4037] mb-1">
+                  <span>Search Radius</span>
+                  <span>{radius}m</span>
+                </div>
+                <input
+                  type="range"
+                  min="500"
+                  max="5000"
+                  step="100"
+                  value={radius}
+                  onChange={(e) => setRadius(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-[#8d6e63] rounded-lg appearance-none cursor-pointer accent-[#3e2723]"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[10px] font-bold text-[#5d4037] mb-1">
+                  <span>Stops</span>
+                  <span>{pubCount} Pubs</span>
+                </div>
+                <input
+                  type="range"
+                  min="3"
+                  max="12"
+                  step="1"
+                  value={pubCount}
+                  onChange={(e) => setPubCount(parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-[#8d6e63] rounded-lg appearance-none cursor-pointer accent-[#3e2723]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-4">
             {errorMsg && (
-              <div className="mt-4 text-[#7f1d1d] font-serif text-sm text-center bg-[#fca5a5]/30 p-2 rounded border border-[#ef4444]/50">
+              <div className="text-[#7f1d1d] text-[10px] text-center bg-[#fca5a5]/30 p-2 rounded border border-[#ef4444]/50 font-bold">
                 ⚠ {errorMsg}
               </div>
             )}
+            <button
+              onClick={onSearch}
+              className="w-full py-3 mt-2 bg-[#3e2723] text-[#f4e4bc] text-sm font-bold rounded shadow-lg hover:scale-[1.02] transition-transform border-2 border-[#5d4037] tracking-widest"
+            >
+              {isLoading ? 'SCOUTING...' : 'START CRAWL'}
+            </button>
           </div>
         </div>
       </div>

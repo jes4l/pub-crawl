@@ -8,6 +8,8 @@ interface Pub {
   category?: string;
   crimeCount?: number;
   crimeBreakdown?: Record<string, number>;
+  tier?: string;
+  rating?: number;
 }
 
 export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => void }) {
@@ -35,6 +37,12 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
     return () => { mounted = false; };
   }, [pub.name, pub.lat, pub.long]);
 
+  const getTierColor = (tier: string | undefined) => {
+    if (tier === 'Aristocrat') return 'bg-[#4c1d95] text-[#e9d5ff] border-[#2e1065]';
+    if (tier === 'Bottom of the Barrel') return 'bg-[#713f12] text-[#fef9c3] border-[#422006]';
+    return 'bg-[#1e3a8a] text-[#dbeafe] border-[#172554]';
+  };
+
   return (
     <div className="relative bg-[#f4e4bc] p-1 w-[260px] font-serif border-2 border-[#5d4037] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_0_30px_rgba(93,64,55,0.2)] rounded-sm overflow-hidden flex flex-col">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] opacity-30 pointer-events-none mix-blend-multiply"></div>
@@ -47,15 +55,8 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
         &times;
       </button>
 
-      {pub.crimeCount !== undefined && (
-        <div className={`absolute top-2 left-2 z-20 px-1.5 py-0.5 rounded-sm border shadow-sm text-[8.5px] font-bold tracking-wider 
-          ${pub.crimeCount > 10 ? 'bg-[#7f1d1d] text-[#fca5a5] border-[#450a0a]' : 'bg-[#14532d] text-[#86efac] border-[#052e16]'}`}
-        >
-          CRIME COUNT: {pub.crimeCount}
-        </div>
-      )}
-
-      <div className="relative h-32 w-full overflow-hidden mb-2 bg-[#e0ce9e] border border-[#5d4037] shadow-inner rounded-sm group shrink-0">
+      {/* IMAGE SECTION */}
+      <div className="relative h-32 w-full overflow-hidden mb-1 bg-[#e0ce9e] border border-[#5d4037] shadow-inner rounded-sm group shrink-0">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#d7ccc8]">
             <span className="text-[#5d4037] text-xs tracking-[0.2em] uppercase font-bold animate-pulse">Scouting...</span>
@@ -77,11 +78,27 @@ export default function PubCard({ pub, onClose }: { pub: Pub, onClose: () => voi
         )}
       </div>
       
+      {/* BADGES ROW (Below Image) */}
+      <div className="flex gap-1 px-1 mb-1">
+        {pub.crimeCount !== undefined && (
+          <div className={`flex-1 text-center py-0.5 rounded-sm border shadow-sm text-[8px] font-bold tracking-wider 
+            ${pub.crimeCount > 10 ? 'bg-[#7f1d1d] text-[#fca5a5] border-[#450a0a]' : 'bg-[#14532d] text-[#86efac] border-[#052e16]'}`}
+          >
+            CRIME: {pub.crimeCount}
+          </div>
+        )}
+        {pub.tier && (
+          <div className={`flex-1 text-center py-0.5 rounded-sm border shadow-sm text-[8px] font-bold tracking-wider uppercase ${getTierColor(pub.tier)}`}>
+            {pub.tier}
+          </div>
+        )}
+      </div>
+
       <div className="text-center relative z-10 px-2 pb-1">
         <h3 className="font-bold text-[#3e2723] text-lg leading-tight mb-0.5 uppercase tracking-wide border-b border-[#5d4037]/30 pb-0.5 inline-block">{pub.name}</h3>
         <div className="flex items-center justify-center gap-2 my-0.5">
             <span className="h-[1px] w-4 bg-[#5d4037]/50"></span>
-            <p className="text-[10px] text-[#5d4037] italic font-bold">{pub.category}</p>
+            <p className="text-[10px] text-[#5d4037] italic font-bold">{pub.category} • {pub.rating ? `⭐ ${pub.rating}` : 'No Rating'}</p>
             <span className="h-[1px] w-4 bg-[#5d4037]/50"></span>
         </div>
         {pub.address && <p className="text-[10px] text-[#795548] mt-0.5 font-semibold leading-snug">{pub.address}</p>}
