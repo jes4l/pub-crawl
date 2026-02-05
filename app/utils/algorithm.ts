@@ -2,8 +2,12 @@ export interface Point {
   lat: number;
   long: number;
   crimeCount?: number;
+  crimeDensity?: number; 
+  tierDensity?: number;
+  elevation?: number;
   id?: string;
   name?: string;
+  tier?: string;
 }
 
 function getDistance(p1: Point, p2: Point) {
@@ -20,61 +24,64 @@ function getDistance(p1: Point, p2: Point) {
   return R * c;
 }
 
-function calculateCost(current: Point, next: Point, type: 'sovereign' | 'conqueror') {
-  const dist = getDistance(current, next);
-  const crime = next.crimeCount || 0;
-
-  if (type === 'sovereign') {
-    return dist + crime * 500;
-  }
-
-  if (type === 'conqueror') {
-    return dist - crime * 200;
-  }
-
-  return dist;
-}
-
 export function generateCrawlRoute(
   start: Point,
   pubs: Point[],
   type: 'sovereign' | 'conqueror',
-  limit: number
+  limit: number,
+  isLegDay: boolean
 ): Point[] {
   if (pubs.length === 0) return [];
+  const validPubs = pubs.filter((p) => p.lat && p.long);
+  if (validPubs.length === 0) return [];
 
-  const unvisited = pubs.filter((p) => p.lat && p.long);
-  const path: Point[] = [];
-  let current = start;
+  const scoredAnchors = validPubs.map((p) => {
+    let score = (p.tierDensity || 1) * 20;
 
-  const targetCount = Math.min(limit, unvisited.length);
+    const crimeFactor = (p.crimeDensity || 0);
 
-  while (path.length < targetCount && unvisited.length > 0) {
-    const scoredPubs = unvisited.map((pub, index) => ({
-      index,
-      pub,
-      score: calculateCost(current, pub, type)
-    }));
-
-    scoredPubs.sort((a, b) => a.score - b.score);
-
-    const poolSize = Math.min(3, scoredPubs.length);
-    const randomIndex = Math.floor(Math.random() * poolSize);
-
-    const selected = scoredPubs[randomIndex];
-
-    if (selected) {
-      path.push(selected.pub);
-      current = selected.pub;
-
-      const removeIndex = unvisited.indexOf(selected.pub);
-      if (removeIndex > -1) {
-        unvisited.splice(removeIndex, 1);
-      }
+    if (type === 'conqueror') {
+        score += crimeFactor * 5; 
     } else {
-      break;
+        score -= crimeFactor * 5; 
     }
-  }
 
-  return path;
+    const distKm = getDistance(start, p) / 1000;
+    score -= distKm * 0.5;
+
+    return { pub: p, score };
+  });
+
+  scoredAnchors.sort((a, b) => b.score - a.score);
+
+  const bestAnchor = scoredAnchors[0].pub;
+
+  const clusterCandidates = validPubs.map((p) => ({
+    pub: p,
+    dist: getDistance(bestAnchor, p)
+  }));
+
+  clusterCandidates.sort((a, b) => a.dist - b.dist);
+
+  const selectedPubs = clusterCandidates.slice(0, limit).map((c) => c.pub);
+
+  if (isLegDay) {
+    return selectedPubs.sort((a, b) => (b.elevation || 0) - (a.elevation || 0));
+  } else {
+    let current = selectedPubs.reduce((prev, curr) =>
+        getDistance(start, prev) < getDistance(start, curr) ? prev : curr
+    );
+
+    const route: Point[] = [current];
+    const unvisited = selectedPubs.filter((p) => p !== current);
+
+    while (unvisited.length > 0) {
+      unvisited.sort((a, b) => getDistance(current, a) - getDistance(current, b));
+      const next = unvisited.shift()!;
+      route.push(next);
+      current = next;
+    }
+
+    return route;
+  }
 }

@@ -30,10 +30,12 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
 function determineTier(priceLevel: string, rating: number, userRatingCount: number) {
   if (priceLevel === 'PRICE_LEVEL_EXPENSIVE' || priceLevel === 'PRICE_LEVEL_VERY_EXPENSIVE')
     return 'Aristocrat';
-  if (rating >= 4.5 && userRatingCount > 100) return 'Aristocrat';
+  
+  if (rating > 4.6 && userRatingCount > 100) return 'Aristocrat';
 
   if (priceLevel === 'PRICE_LEVEL_INEXPENSIVE') return 'Bottom of the Barrel';
-  if (rating < 4.2) return 'Bottom of the Barrel';
+  
+  if (rating < 3.8) return 'Bottom of the Barrel';
 
   return 'Passable';
 }
@@ -47,7 +49,7 @@ async function fetchGoogleNearby(lat: number, long: number, radius: number, type
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY as string,
         'X-Goog-FieldMask':
-          'places.name,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.rating,places.userRatingCount,places.priceLevel'
+          'places.name,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.googleMapsUri'
       },
       body: JSON.stringify({
         includedTypes: types,
@@ -73,7 +75,7 @@ async function fetchGoogleText(lat: number, long: number, radius: number, query:
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY as string,
         'X-Goog-FieldMask':
-          'places.name,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.rating,places.userRatingCount,places.priceLevel'
+          'places.name,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.googleMapsUri'
       },
       body: JSON.stringify({
         textQuery: query,
@@ -171,7 +173,7 @@ export async function GET(request: Request) {
       return types.includes('bar') || types.includes('pub') || types.includes('night_club');
     });
 
-    const processedPubs = await Promise.all(
+    const pubsWithCrime = await Promise.all(
       validPlaces.map(async (place: any) => {
         const pLat = place.location.latitude;
         const pLong = place.location.longitude;
@@ -182,10 +184,11 @@ export async function GET(request: Request) {
           const date = new Date();
           date.setMonth(date.getMonth() - 2);
           const dateStr = date.toISOString().slice(0, 7);
+          
           const crimeRes = await fetchWithTimeout(
             `https://data.police.uk/api/crimes-street/all-crime?lat=${pLat}&lng=${pLong}&date=${dateStr}`,
             {},
-            1000
+            1200
           );
 
           if (crimeRes.ok) {
@@ -221,18 +224,59 @@ export async function GET(request: Request) {
           rating: place.rating || 0,
           tier,
           crimeCount,
-          crimeBreakdown
+          crimeBreakdown,
+          website: place.websiteUri || place.googleMapsUri || `https://www.google.com/search?q=${encodeURIComponent(place.displayName.text + ' pub')}`
         };
       })
     );
 
-    processedPubs.sort((a, b) => {
+    const lats = pubsWithCrime.map(p => p.lat).join(',');
+    const longs = pubsWithCrime.map(p => p.long).join(',');
+    
+    let elevations: number[] = [];
+    try {
+        const elevationRes = await fetchWithTimeout(
+            `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${longs}`,
+            {}, 2000
+        );
+        if (elevationRes.ok) {
+            const data = await elevationRes.json();
+            elevations = data.elevation || [];
+        }
+    } catch {}
+
+    const finalPubs = pubsWithCrime.map((pub, index) => {
+        let crimeDensity = pub.crimeCount;
+        let tierDensity = 1; 
+
+        pubsWithCrime.forEach((otherPub) => {
+            if (pub.name !== otherPub.name) {
+                const dist = getDistanceFromLatLonInKm(pub.lat, pub.long, otherPub.lat, otherPub.long);
+                
+                if (dist <= 0.5) {
+                    crimeDensity += otherPub.crimeCount;
+                    if (otherPub.tier === pub.tier) {
+                        tierDensity += 1;
+                    }
+                }
+            }
+        });
+
+        return {
+            ...pub,
+            elevation: elevations[index] || 0,
+            crimeDensity,
+            tierDensity
+        };
+    });
+
+    finalPubs.sort((a, b) => {
       const distA = getDistanceFromLatLonInKm(lat, long, a.lat, a.long);
       const distB = getDistanceFromLatLonInKm(lat, long, b.lat, b.long);
       return distA - distB;
     });
 
-    return NextResponse.json({ pubs: processedPubs });
+    return NextResponse.json({ pubs: finalPubs });
   } catch (error) {
     console.error('Server Error:', error);
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });

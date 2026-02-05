@@ -14,6 +14,8 @@ interface ControlsProps {
   setCrawlType: (t: 'sovereign' | 'conqueror') => void;
   tier: string;
   setTier: (t: string) => void;
+  isLegDay: boolean;
+  setIsLegDay: (b: boolean) => void;
   errorMsg: string | null;
 }
 
@@ -30,6 +32,8 @@ export default function Controls({
   setCrawlType,
   tier,
   setTier,
+  isLegDay,
+  setIsLegDay,
   errorMsg
 }: ControlsProps) {
   const [isOpen, setIsOpen] = useState(true);
@@ -97,10 +101,10 @@ export default function Controls({
         <div className="relative z-10 p-4 flex flex-col h-full gap-4">
           <div className="border-b-2 border-[#5d4037]/20 pb-2 text-center">
             <h1 className="text-[#5d4037] font-serif font-bold text-xl tracking-widest uppercase">
-              Pub Scout
+              Ye Olde Trip
             </h1>
             <p className="text-[10px] text-[#8d6e63] font-bold uppercase tracking-wider">
-              Historical Route Planner
+              Pub Crawl Planner
             </p>
           </div>
 
@@ -152,21 +156,28 @@ export default function Controls({
                   <button
                     key={t}
                     onClick={() => setTier(t)}
-                    className={`w-full text-left px-3 py-2 text-xs font-bold border transition-all rounded-sm flex justify-between items-center
+                    className={`w-full text-left px-3 py-2 border transition-all rounded-sm flex flex-col gap-1
                       ${
                         tier === t
                           ? 'bg-[#5d4037] text-[#f4e4bc] border-[#3e2723]'
                           : 'bg-[#e0ce9e] text-[#5d4037] border-[#8d6e63]/30 hover:bg-[#d7ccc8]'
                       }`}
                   >
-                    <span>
-                      {t === 'Bottom of the Barrel'
-                        ? '🛢️ Bottom Barrel'
-                        : t === 'Passable'
-                        ? '🍺 Passable'
-                        : '🎩 Aristocrat'}
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-xs font-bold">
+                        {t === 'Bottom of the Barrel'
+                          ? '🛢️ Bottom Barrel'
+                          : t === 'Passable'
+                          ? '🍺 Passable'
+                          : '🎩 Aristocrat'}
+                      </span>
+                      {tier === t && <span>✓</span>}
+                    </div>
+                    <span className="text-[9px] opacity-80 leading-tight">
+                        {t === 'Aristocrat' && "Willing to travel for quality? Expect high ratings and higher prices."}
+                        {t === 'Bottom of the Barrel' && "Expect your fare to rise. Cheap, cheerful, and possibly dangerous."}
+                        {t === 'Passable' && "The average pint. Not great, not terrible."}
                     </span>
-                    {tier === t && <span>✓</span>}
                   </button>
                 ))}
               </div>
@@ -202,6 +213,24 @@ export default function Controls({
                   <span className="opacity-70 text-[8px] uppercase">High Risk</span>
                 </button>
               </div>
+            </div>
+
+            <div className="bg-[#e0ce9e]/50 p-3 rounded border border-[#8d6e63]/30 flex items-center justify-between group cursor-pointer" onClick={() => setIsLegDay(!isLegDay)}>
+                 <div>
+                    <label className="text-[10px] font-bold uppercase text-[#5d4037] cursor-pointer">
+                        Is it Leg Day?
+                    </label>
+                    <p className="text-[9px] text-[#5d4037]/80 italic leading-tight">
+                        {isLegDay ? "Hilliest pubs first. 🦵" : "Flat route optimized. 😌"}
+                    </p>
+                 </div>
+                 
+                 <div className={`w-12 h-6 rounded-full relative transition-all duration-300 border-2 shadow-inner
+                    ${isLegDay ? 'bg-[#5d4037] border-[#3e2723]' : 'bg-[#d7ccc8] border-[#a1887f]'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-[#f4e4bc] rounded-full shadow-md transition-all duration-300 transform
+                        ${isLegDay ? 'translate-x-6' : 'translate-x-0'}`}>
+                    </div>
+                 </div>
             </div>
 
             <div className="bg-[#e0ce9e]/50 p-3 rounded border border-[#8d6e63]/30 space-y-3">

@@ -11,6 +11,7 @@ export default function Home() {
   const [pubCount, setPubCount] = useState(6);
   const [crawlType, setCrawlType] = useState<'sovereign' | 'conqueror'>('sovereign');
   const [tier, setTier] = useState('Passable');
+  const [isLegDay, setIsLegDay] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const performSearch = async (latOverride?: number, longOverride?: number) => {
@@ -65,6 +66,7 @@ export default function Home() {
         crawlType={crawlType}
         pubCount={pubCount}
         tier={tier}
+        isLegDay={isLegDay}
       />
       <Controls
         onSearch={() => performSearch()}
@@ -79,6 +81,8 @@ export default function Home() {
         setCrawlType={setCrawlType}
         tier={tier}
         setTier={setTier}
+        isLegDay={isLegDay}
+        setIsLegDay={setIsLegDay}
         errorMsg={errorMsg}
       />
     </main>

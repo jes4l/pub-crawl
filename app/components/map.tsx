@@ -25,13 +25,15 @@ export default function PubMap({
   pubs,
   crawlType,
   pubCount,
-  tier
+  tier,
+  isLegDay
 }: {
   userLocation: { lat: number; long: number };
   pubs: any[];
   crawlType: 'sovereign' | 'conqueror';
   pubCount: number;
   tier: string;
+  isLegDay: boolean;
 }) {
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const [selectedPub, setSelectedPub] = useState<any | null>(null);
@@ -47,12 +49,14 @@ export default function PubMap({
     }
 
     const fetchRoute = async () => {
-      let filteredPubs = pubs;
-      if (tier !== 'Passable') {
-        filteredPubs = pubs.filter((p) => p.tier === tier);
-      }
+      const filteredPubs = pubs.filter((p) => p.tier === tier);
       
-      const sortedPubs = generateCrawlRoute(userLocation, filteredPubs, crawlType, pubCount);
+      if (filteredPubs.length === 0) {
+          setRoutedPubs([]);
+          return;
+      }
+
+      const sortedPubs = generateCrawlRoute(userLocation, filteredPubs, crawlType, pubCount, isLegDay);
       setRoutedPubs(sortedPubs);
 
       if (sortedPubs.length === 0) return;
@@ -77,7 +81,7 @@ export default function PubMap({
     };
 
     fetchRoute();
-  }, [pubs, userLocation, mapToken, crawlType, pubCount, tier]);
+  }, [pubs, userLocation, mapToken, crawlType, pubCount, tier, isLegDay]);
 
   return (
     <div className="w-full h-full relative">
