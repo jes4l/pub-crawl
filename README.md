@@ -1,15 +1,21 @@
 # Ye Olde Trip
 
-## TO DO
-
-- Use police api data to calculate crime
-- Create crime category 
-- Thematic analysis on review to calculate quality of pint
-- Find menu for cheapest pints 
-- Get up hill down hill location for pub
-- Points system for each pub 
+A fun Pub Quiz Generator
 
 ## Categories
 
-- Bottom of the barel, Aristocrat
-- Peasant, Knight, Nomad
+### Quality of Beer 
+
+- Bottom Barrel - Choosing cheap and cheerful drinks
+- Passable - The average pint
+- Aristocrat - Quality and expensive drink
+
+
+### Route Strategy
+
+- Soverign - chooses pub areas that are safe
+- Conqueror - chooses pub areas with the higher crime
+
+### Is it Leg Day
+
+- Reorders the pubs crawl based on hills and distances to keep your steps up

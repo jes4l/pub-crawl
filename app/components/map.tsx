@@ -49,14 +49,15 @@ export default function PubMap({
     }
 
     const fetchRoute = async () => {
-      const filteredPubs = pubs.filter((p) => p.tier === tier);
+      const sortedPubs = generateCrawlRoute(
+          userLocation, 
+          pubs, 
+          crawlType, 
+          pubCount, 
+          isLegDay, 
+          tier
+      );
       
-      if (filteredPubs.length === 0) {
-          setRoutedPubs([]);
-          return;
-      }
-
-      const sortedPubs = generateCrawlRoute(userLocation, filteredPubs, crawlType, pubCount, isLegDay);
       setRoutedPubs(sortedPubs);
 
       if (sortedPubs.length === 0) return;

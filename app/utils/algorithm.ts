@@ -29,39 +29,59 @@ export function generateCrawlRoute(
   pubs: Point[],
   type: 'sovereign' | 'conqueror',
   limit: number,
-  isLegDay: boolean
+  isLegDay: boolean,
+  targetTier: string
 ): Point[] {
   if (pubs.length === 0) return [];
   const validPubs = pubs.filter((p) => p.lat && p.long);
   if (validPubs.length === 0) return [];
 
-  const scoredAnchors = validPubs.map((p) => {
-    let score = (p.tierDensity || 1) * 20;
+  const tierMatchingPubs = validPubs.filter(p => p.tier === targetTier);
+  const anchorPool = tierMatchingPubs.length > 0 ? tierMatchingPubs : validPubs;
+
+  const scoredAnchors = anchorPool.map((p) => {
+    let score = 0;
+    score += (p.tierDensity || 1) * 100;
 
     const crimeFactor = (p.crimeDensity || 0);
-
     if (type === 'conqueror') {
-        score += crimeFactor * 5; 
+        score += crimeFactor * 10; 
     } else {
-        score -= crimeFactor * 5; 
+        score -= crimeFactor * 10; 
     }
 
     const distKm = getDistance(start, p) / 1000;
-    score -= distKm * 0.5;
+    score -= distKm * 100;
 
     return { pub: p, score };
   });
 
   scoredAnchors.sort((a, b) => b.score - a.score);
-
   const bestAnchor = scoredAnchors[0].pub;
+  const clusterCandidates = validPubs.map((p) => {
+      const distMeters = getDistance(bestAnchor, p);
+      
+      let selectionCost = distMeters; 
 
-  const clusterCandidates = validPubs.map((p) => ({
-    pub: p,
-    dist: getDistance(bestAnchor, p)
-  }));
+      if (p.tier !== targetTier) {
+          selectionCost += 2000;
+      }
 
-  clusterCandidates.sort((a, b) => a.dist - b.dist);
+      if (distMeters > 800) {
+          selectionCost += 5000;
+      }
+
+      const crimeCount = p.crimeCount || 0;
+      if (type === 'conqueror') {
+          selectionCost -= Math.min(crimeCount * 40, 500); 
+      } else {
+          selectionCost += Math.min(crimeCount * 250, 1000); 
+      }
+
+      return { pub: p, cost: selectionCost };
+  });
+
+  clusterCandidates.sort((a, b) => a.cost - b.cost);
 
   const selectedPubs = clusterCandidates.slice(0, limit).map((c) => c.pub);
 

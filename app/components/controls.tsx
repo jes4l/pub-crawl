@@ -174,8 +174,8 @@ export default function Controls({
                       {tier === t && <span>✓</span>}
                     </div>
                     <span className="text-[9px] opacity-80 leading-tight">
-                        {t === 'Aristocrat' && "Willing to travel for quality? Expect high ratings and higher prices."}
-                        {t === 'Bottom of the Barrel' && "Expect your fare to rise. Cheap, cheerful, and possibly dangerous."}
+                        {t === 'Aristocrat' && "Willing to travel for quality? Your fare shall rise rapidly"}
+                        {t === 'Bottom of the Barrel' && "Cheap and cheerful drinks. Expect nothing out of the ordinary."}
                         {t === 'Passable' && "The average pint. Not great, not terrible."}
                     </span>
                   </button>

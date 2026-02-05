@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const fetchWithTimeout = async (resource: string, options = {}, timeout = 1500) => {
+const fetchWithTimeout = async (resource: string, options = {}, timeout = 6000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -30,11 +30,9 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
 function determineTier(priceLevel: string, rating: number, userRatingCount: number) {
   if (priceLevel === 'PRICE_LEVEL_EXPENSIVE' || priceLevel === 'PRICE_LEVEL_VERY_EXPENSIVE')
     return 'Aristocrat';
-  
   if (rating > 4.6 && userRatingCount > 100) return 'Aristocrat';
 
   if (priceLevel === 'PRICE_LEVEL_INEXPENSIVE') return 'Bottom of the Barrel';
-  
   if (rating < 3.8) return 'Bottom of the Barrel';
 
   return 'Passable';
@@ -92,6 +90,19 @@ async function fetchGoogleText(lat: number, long: number, radius: number, query:
   }
 }
 
+function generatePolygon(lat: number, long: number, radiusMeters: number) {
+  const r = radiusMeters * 1.3; 
+  const latOffset = r / 111320; 
+  const longOffset = r / (40075000 * Math.cos((lat * Math.PI) / 180) / 360);
+
+  const p1 = `${lat + latOffset},${long - longOffset}`;
+  const p2 = `${lat + latOffset},${long + longOffset}`;
+  const p3 = `${lat - latOffset},${long + longOffset}`;
+  const p4 = `${lat - latOffset},${long - longOffset}`;
+
+  return `${p1}:${p2}:${p3}:${p4}`;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lat = parseFloat(searchParams.get('lat') || '0');
@@ -134,8 +145,7 @@ export async function GET(request: Request) {
     const validPlaces = Array.from(uniquePlaces.values()).filter((place: any) => {
       const types = place.types || [];
       const primary = place.primaryType || '';
-      const name = (place.displayName?.text || '').toLowerCase();
-
+      
       const bannedTags = [
         'lodging','hotel','school','university','student_union',
         'gym','spa','museum','art_gallery','place_of_worship',
@@ -144,7 +154,6 @@ export async function GET(request: Request) {
         'performing_arts_theater','auditorium',
         'cafe','coffee_shop','tea_house','ice_cream_shop','steak_house'
       ];
-
       const bannedCuisines = [
         'indian_restaurant','sushi_restaurant','chinese_restaurant',
         'fast_food_restaurant','brazilian_restaurant'
@@ -154,60 +163,62 @@ export async function GET(request: Request) {
       if (types.some((t: string) => bannedCuisines.includes(t))) return false;
 
       if (primary.includes('restaurant')) {
+        const name = (place.displayName?.text || '').toLowerCase();
         const isProperDrinkingSpot = types.includes('pub') || types.includes('night_club');
-        const nameIsGastropub =
-          name.includes('gastropub') || name.includes('tavern') || name.includes('inn');
+        const nameIsGastropub = name.includes('gastropub') || name.includes('tavern') || name.includes('inn');
         if (!isProperDrinkingSpot && !nameIsGastropub) return false;
       }
 
       if (types.includes('pizza_restaurant')) {
         if (!types.includes('bar') && !types.includes('pub')) return false;
       }
-
-      if (primary === 'night_club') {
-        const isHybrid =
-          types.includes('restaurant') || types.includes('food') || types.includes('pub');
-        if (!isHybrid) return false;
-      }
-
       return types.includes('bar') || types.includes('pub') || types.includes('night_club');
     });
 
-    const pubsWithCrime = await Promise.all(
-      validPlaces.map(async (place: any) => {
+    const poly = generatePolygon(lat, long, radiusMeters);
+    let allAreaCrimes: any[] = [];
+    
+    const dates = [];
+    const today = new Date();
+    for (let i = 1; i <= 12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        dates.push(d.toISOString().slice(0, 7));
+    }
+
+    try {
+        const crimeResponses = await Promise.all(
+            dates.map(dateStr => 
+                fetchWithTimeout(
+                    `https://data.police.uk/api/crimes-street/all-crime?poly=${poly}&date=${dateStr}`, 
+                    {}, 
+                    5000
+                ).then(res => res.ok ? res.json() : [])
+                 .catch(() => [])
+            )
+        );
+        allAreaCrimes = crimeResponses.flat();
+    } catch (e) {
+        console.error("Crime Fetch Failed", e);
+    }
+
+    const pubsWithCrime = validPlaces.map((place: any) => {
         const pLat = place.location.latitude;
         const pLong = place.location.longitude;
+        
         let crimeCount = 0;
         const crimeBreakdown: Record<string, number> = {};
 
-        try {
-          const date = new Date();
-          date.setMonth(date.getMonth() - 2);
-          const dateStr = date.toISOString().slice(0, 7);
-          
-          const crimeRes = await fetchWithTimeout(
-            `https://data.police.uk/api/crimes-street/all-crime?lat=${pLat}&lng=${pLong}&date=${dateStr}`,
-            {},
-            1200
-          );
-
-          if (crimeRes.ok) {
-            const crimes = await crimeRes.json();
-            crimes.forEach((crime: any) => {
-              const dist = getDistanceFromLatLonInKm(
-                pLat,
-                pLong,
-                parseFloat(crime.location.latitude),
-                parseFloat(crime.location.longitude)
-              );
-              if (dist <= 0.05) {
+        allAreaCrimes.forEach((crime: any) => {
+            const cLat = parseFloat(crime.location.latitude);
+            const cLong = parseFloat(crime.location.longitude);
+            const dist = getDistanceFromLatLonInKm(pLat, pLong, cLat, cLong);
+            
+            if (dist <= 0.05) { 
                 crimeCount++;
                 const cat = crime.category.replace(/-/g, ' ');
                 crimeBreakdown[cat] = (crimeBreakdown[cat] || 0) + 1;
-              }
-            });
-          }
-        } catch {}
+            }
+        });
 
         const tier = determineTier(
           place.priceLevel,
@@ -227,17 +238,15 @@ export async function GET(request: Request) {
           crimeBreakdown,
           website: place.websiteUri || place.googleMapsUri || `https://www.google.com/search?q=${encodeURIComponent(place.displayName.text + ' pub')}`
         };
-      })
-    );
+    });
 
     const lats = pubsWithCrime.map(p => p.lat).join(',');
     const longs = pubsWithCrime.map(p => p.long).join(',');
-    
     let elevations: number[] = [];
     try {
         const elevationRes = await fetchWithTimeout(
             `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${longs}`,
-            {}, 2000
+            {}, 3000
         );
         if (elevationRes.ok) {
             const data = await elevationRes.json();
@@ -253,7 +262,7 @@ export async function GET(request: Request) {
             if (pub.name !== otherPub.name) {
                 const dist = getDistanceFromLatLonInKm(pub.lat, pub.long, otherPub.lat, otherPub.long);
                 
-                if (dist <= 0.5) {
+                if (dist <= 0.6) {
                     crimeDensity += otherPub.crimeCount;
                     if (otherPub.tier === pub.tier) {
                         tierDensity += 1;
