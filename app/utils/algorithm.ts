@@ -47,7 +47,7 @@ export function generateCrawlRoute(
     if (type === 'conqueror') {
         score += crimeFactor * 10; 
     } else {
-        score -= crimeFactor * 10; 
+        score -= crimeFactor * 20; 
     }
 
     const distKm = getDistance(start, p) / 1000;
@@ -67,8 +67,8 @@ export function generateCrawlRoute(
           selectionCost += 2000;
       }
 
-      if (distMeters > 800) {
-          selectionCost += 5000;
+      if (distMeters > 1200) {
+          selectionCost += 3000;
       }
 
       const crimeCount = p.crimeCount || 0;

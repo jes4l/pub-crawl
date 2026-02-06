@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const fetchWithTimeout = async (resource: string, options = {}, timeout = 6000) => {
+const fetchWithTimeout = async (resource: string, options = {}, timeout = 8000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -91,7 +91,7 @@ async function fetchGoogleText(lat: number, long: number, radius: number, query:
 }
 
 function generatePolygon(lat: number, long: number, radiusMeters: number) {
-  const r = radiusMeters * 1.3; 
+  const r = radiusMeters * 1.2; 
   const latOffset = r / 111320; 
   const longOffset = r / (40075000 * Math.cos((lat * Math.PI) / 180) / 360);
 
@@ -211,12 +211,13 @@ export async function GET(request: Request) {
         allAreaCrimes.forEach((crime: any) => {
             const cLat = parseFloat(crime.location.latitude);
             const cLong = parseFloat(crime.location.longitude);
-            const dist = getDistanceFromLatLonInKm(pLat, pLong, cLat, cLong);
-            
-            if (dist <= 0.05) { 
-                crimeCount++;
-                const cat = crime.category.replace(/-/g, ' ');
-                crimeBreakdown[cat] = (crimeBreakdown[cat] || 0) + 1;
+            if (Math.abs(cLat - pLat) < 0.001 && Math.abs(cLong - pLong) < 0.001) {
+                const dist = getDistanceFromLatLonInKm(pLat, pLong, cLat, cLong);
+                if (dist <= 0.05) {
+                    crimeCount++;
+                    const cat = crime.category.replace(/-/g, ' ');
+                    crimeBreakdown[cat] = (crimeBreakdown[cat] || 0) + 1;
+                }
             }
         });
 

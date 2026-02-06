@@ -2,6 +2,8 @@
 
 A fun Pub Quiz Generator
 
+![Ye Olde Trip](public/assets/yeoldetrip.png)
+
 ## Categories
 
 ### Quality of Beer 
